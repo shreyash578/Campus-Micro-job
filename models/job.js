@@ -2,6 +2,18 @@ const mongoose = require('mongoose');
 
 const jobSchema = new mongoose.Schema(
   {
+    domain: {
+      type: String,
+      required: [true, 'Job domain is required'],
+      trim: true,
+      maxlength: [80, 'Domain cannot exceed 80 characters'],
+    },
+    campus: {
+      type: String,
+      required: [true, 'Campus is required'],
+      trim: true,
+      maxlength: [120, 'Campus cannot exceed 120 characters'],
+    },
     title: {
       type: String,
       required: [true, 'Job title is required'],

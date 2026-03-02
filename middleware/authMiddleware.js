@@ -1,19 +1,35 @@
-const jwt = require('jsonwebtoken');
+﻿const RevokedToken = require('../models/revokedToken');
+const { hashToken } = require('../utils/tokenHash');
+const { extractBearerToken, verifyAccessToken } = require('../utils/jwt');
 
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+const verifyToken = async (req, res, next) => {
+  const token = extractBearerToken(req.headers.authorization);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     return res.status(401).json({ message: 'Token missing' });
   }
 
-  const token = authHeader.split(' ')[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
+    const decoded = verifyAccessToken(token);
+    const tokenHash = hashToken(token);
+
+    const revoked = await RevokedToken.exists({ tokenHash });
+    if (revoked) {
+      return res.status(401).json({ message: 'Token revoked' });
+    }
+
+    req.authToken = token;
+    req.user = {
+      ...decoded,
+      id: decoded.id || decoded.sub,
+    };
+
+    return next();
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+
     return res.status(403).json({ message: 'Invalid token' });
   }
 };

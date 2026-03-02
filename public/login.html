@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Login - Campus Micro Placement</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="top-bar">
+      <a href="index.html">Home</a>
+      <a href="register.html">Register</a>
+      <a href="jobs.html">Jobs</a>
+    </header>
+
+    <main class="card form-card">
+      <h1>Student Login</h1>
+
+      <form id="loginForm">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" name="email" required />
+
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" name="password" required />
+
+        <button type="submit">Login</button>
+      </form>
+
+      <p id="loginMessage" class="message"></p>
+    </main>
+  </div>
+
+  <script src="js/main.js" defer></script>
+</body>
+</html>

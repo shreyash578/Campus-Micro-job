@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const companySchema = new mongoose.Schema(
@@ -35,13 +35,12 @@ const companySchema = new mongoose.Schema(
   }
 );
 
-companySchema.pre('save', async function save(next) {
+companySchema.pre('save', async function save() {
   if (!this.isModified('password')) {
-    return next();
+    return;
   }
 
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 module.exports = mongoose.model('Company', companySchema);

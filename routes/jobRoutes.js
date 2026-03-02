@@ -1,8 +1,10 @@
-const express = require('express');
+﻿const express = require('express');
+require('../models/company');
 const Job = require('../models/job');
 const JobApplication = require('../models/jobApplication');
 const {
   getMyApplications,
+  getJobSuggestions,
   getApplicantsForJob,
   updateApplicationStatus,
 } = require('../controllers/jobController');
@@ -13,7 +15,18 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const jobs = await Job.find()
+    const { domain, campus } = req.query;
+    const filter = {};
+
+    if (domain) {
+      filter.domain = { $regex: `^${String(domain).trim()}$`, $options: 'i' };
+    }
+
+    if (campus) {
+      filter.campus = { $regex: `^${String(campus).trim()}$`, $options: 'i' };
+    }
+
+    const jobs = await Job.find(filter)
       .populate('postedBy', 'companyName')
       .sort({ createdAt: -1 });
 
@@ -57,6 +70,7 @@ router.post('/apply', verifyToken, authorizeRoles('student'), async (req, res) =
 });
 
 router.get('/my-applications', verifyToken, authorizeRoles('student'), getMyApplications);
+router.get('/suggestions', verifyToken, authorizeRoles('student'), getJobSuggestions);
 
 router.get(
   '/:jobId/applicants',

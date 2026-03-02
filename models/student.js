@@ -2,6 +2,23 @@ const mongoose = require('mongoose');
 
 const studentSchema = new mongoose.Schema(
   {
+    campus: {
+      type: String,
+      required: [true, 'Campus is required'],
+      trim: true,
+      maxlength: [120, 'Campus cannot exceed 120 characters'],
+    },
+    preferredDomains: {
+      type: [String],
+      default: [],
+      set: (values) => {
+        if (!Array.isArray(values)) return [];
+        return values
+          .map((value) => String(value).trim())
+          .filter((value) => value.length > 0)
+          .slice(0, 10);
+      },
+    },
     name: {
       type: String,
       required: [true, 'Name is required'],

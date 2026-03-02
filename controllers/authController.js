@@ -1,3 +1,7 @@
+﻿const bcrypt = require('bcryptjs');
+const User = require('../models/user');
+const { signAccessToken } = require('../utils/jwt');
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -16,11 +20,11 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
+    const token = signAccessToken({
+      sub: String(user._id),
+      id: String(user._id),
+      role: user.role,
+    });
 
     return res.status(200).json({
       message: 'Login successful',
@@ -30,3 +34,5 @@ const login = async (req, res) => {
     return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+module.exports = { login };
