@@ -2,6 +2,7 @@
 require('../models/company');
 const Job = require('../models/job');
 const JobApplication = require('../models/jobApplication');
+const Company = require('../models/company');
 const {
   getMyApplications,
   getJobSuggestions,
@@ -64,6 +65,35 @@ router.post('/apply', verifyToken, authorizeRoles('student'), async (req, res) =
     });
 
     return res.status(201).json({ message: 'Job application submitted successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+router.post('/', verifyToken, authorizeRoles('company'), async (req, res) => {
+  try {
+    const { title, description, stipend, deadline, domain, campus } = req.body;
+
+    if (!title || !description || stipend === undefined || !deadline || !domain || !campus) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const company = await Company.findById(req.user.id);
+    if (!company) {
+      return res.status(401).json({ message: 'Company not found' });
+    }
+
+    const job = await Job.create({
+      title,
+      description,
+      stipend,
+      deadline,
+      domain,
+      campus,
+      postedBy: company._id,
+    });
+
+    return res.status(201).json({ message: 'Job posted successfully', job });
   } catch (error) {
     return res.status(500).json({ message: 'Server error', error: error.message });
   }

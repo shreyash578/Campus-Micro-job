@@ -1,12 +1,22 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Job = require('../models/job');
+const Company = require('../models/company');
 
 async function seedJobs() {
   const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/campus_microjob';
   await mongoose.connect(uri);
 
-  const postedBy = new mongoose.Types.ObjectId();
+  let company = await Company.findOne({ email: 'seed@campus.local' });
+  if (!company) {
+    company = await Company.create({
+      companyName: 'Campus Seed Company',
+      email: 'seed@campus.local',
+      password: 'seedpass123',
+      description: 'Seed company for sample jobs.',
+    });
+  }
+  const postedBy = company._id;
   const now = Date.now();
   const jobs = [
     {

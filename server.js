@@ -2,6 +2,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const cors = require('cors');
 const mongoose = require('mongoose');
 const { getJwtConfig } = require('./utils/jwt');
 
@@ -13,6 +14,7 @@ const app = express();
 
 // Middleware to parse incoming JSON request bodies
 app.use(express.json());
+app.use(cors());
 
 // Read values from environment variables with sensible fallbacks
 const PORT = process.env.PORT || 4000;
@@ -24,6 +26,8 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/students', require('./routes/studentRoutes'));
+app.use('/api/companies', require('./routes/companyRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/jobs', require('./routes/jobRoutes'));
 const dashboardRoutes = require('./routes/dashboardRoutes');
 app.use('/api/dashboard', dashboardRoutes);

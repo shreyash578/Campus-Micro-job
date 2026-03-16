@@ -103,12 +103,23 @@ exports.updateApplicationStatus = async (req, res) => {
   try {
     const { applicationId } = req.params;
     const { status } = req.body;
+    const allowedStatuses = ['Pending', 'Selected', 'Rejected'];
+
+    if (!status || !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        message: `Status must be one of: ${allowedStatuses.join(', ')}`,
+      });
+    }
 
     const updated = await JobApplication.findByIdAndUpdate(
       applicationId,
       { status },
-      { new: true }
+      { new: true, runValidators: true }
     );
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
 
     return res.status(200).json({
       message: 'Application status updated',

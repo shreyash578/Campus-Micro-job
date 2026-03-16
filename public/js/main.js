@@ -5,6 +5,17 @@
   if (type) element.classList.add(type);
 }
 
+function getBaseUrl() {
+  const { protocol, hostname, port } = window.location;
+  if (protocol === 'file:') {
+    return 'http://localhost:4000';
+  }
+  if ((hostname === 'localhost' || hostname === '127.0.0.1') && port !== '4000') {
+    return 'http://localhost:4000';
+  }
+  return '';
+}
+
 function getStudentToken() {
   return localStorage.getItem('studentToken');
 }
@@ -48,12 +59,28 @@ async function parseJsonSafe(response) {
   return data;
 }
 
+async function requestJsonRaw(url, options) {
+  const response = await fetch(url, options);
+  const text = await response.text();
+  let data = {};
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (error) {
+      data = {};
+    }
+  }
+
+  return { response, data };
+}
+
 async function fetchCurrentStudent() {
   const token = getStudentToken();
   if (!token) return null;
 
   try {
-    const response = await fetch('/api/students/me', {
+    const response = await fetch(`${getBaseUrl()}/api/students/me`, {
       headers: {
         ...getAuthHeaders()
       }
@@ -74,7 +101,7 @@ async function logoutStudent() {
 
   try {
     if (token) {
-      const response = await fetch('/api/students/logout', {
+      const response = await fetch(`${getBaseUrl()}/api/students/logout`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders()
@@ -108,9 +135,19 @@ function buildSessionControls(student) {
     logoutBtn.textContent = 'Logout';
     logoutBtn.addEventListener('click', async () => {
       await logoutStudent();
-      window.location.href = 'login.html';
+      window.location.href = `${getBaseUrl()}/login.html`;
     });
     wrapper.appendChild(logoutBtn);
+  } else {
+    const guestBtn = document.createElement('button');
+    guestBtn.type = 'button';
+    guestBtn.className = 'session-guest-btn';
+    guestBtn.textContent = 'Continue as Guest';
+    guestBtn.addEventListener('click', () => {
+      clearStudentToken();
+      window.location.href = `${getBaseUrl()}/jobs.html`;
+    });
+    wrapper.appendChild(guestBtn);
   }
 
   return wrapper;
@@ -128,13 +165,13 @@ function renderSessionUI(student) {
 
 function redirectToLogin() {
   const next = encodeURIComponent(window.location.pathname.split('/').pop() || 'my-applications.html');
-  window.location.href = `login.html?reason=auth&next=${next}`;
+  window.location.href = `${getBaseUrl()}/login.html?reason=auth&next=${next}`;
 }
 
 async function enforcePageGuard(student) {
   const page = getCurrentPageName();
 
-  if (page === 'my-applications.html' && !student) {
+  if ((page === 'my-applications.html' || page === 'student-dashboard.html') && !student) {
     redirectToLogin();
     return false;
   }
@@ -149,9 +186,15 @@ function maybeShowLoginReason() {
   const params = new URLSearchParams(window.location.search);
   const reason = params.get('reason');
   const messageEl = document.getElementById('loginMessage');
+  const roleParam = params.get('role');
+  const roleSelect = document.getElementById('loginRole');
 
   if (reason === 'auth') {
     showMessage(messageEl, 'Please login to continue.', 'error');
+  }
+
+  if (roleParam && roleSelect) {
+    roleSelect.value = roleParam;
   }
 }
 
@@ -167,7 +210,7 @@ async function registerStudent(event) {
     .filter(Boolean);
 
   try {
-    const response = await fetch('/api/students/register', {
+    const response = await fetch(`${getBaseUrl()}/api/students/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -190,30 +233,116 @@ async function loginStudent(event) {
   const form = event.target;
   const messageEl = document.getElementById('loginMessage');
   const payload = Object.fromEntries(new FormData(form).entries());
+  const baseUrl = getBaseUrl();
 
   try {
-    const response = await fetch('/api/students/login', {
+    const role = String(payload.role || 'auto').toLowerCase();
+    delete payload.role;
+
+    const allAttempts = [
+      { role: 'student', endpoint: `${baseUrl}/api/students/login` },
+      { role: 'admin', endpoint: `${baseUrl}/api/admin/login` },
+      { role: 'company', endpoint: `${baseUrl}/api/companies/login` },
+    ];
+
+    const loginAttempts = role === 'auto'
+      ? allAttempts
+      : allAttempts.filter((attempt) => attempt.role === role);
+
+    for (const attempt of loginAttempts) {
+      const { response, data } = await requestJsonRaw(attempt.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok && data.token) {
+        localStorage.removeItem('studentToken');
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('companyToken');
+
+        if (attempt.role === 'student') {
+          localStorage.setItem('studentToken', data.token);
+        } else if (attempt.role === 'admin') {
+          localStorage.setItem('adminToken', data.token);
+        } else {
+          localStorage.setItem('companyToken', data.token);
+        }
+
+        showMessage(messageEl, data.message || 'Login successful', 'success');
+        form.reset();
+
+        if (attempt.role === 'admin') {
+          window.location.href = `${baseUrl}/admin-dashboard.html`;
+          return;
+        }
+
+        if (attempt.role === 'company') {
+          window.location.href = `${baseUrl}/jobs.html`;
+          return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get('next') || 'student-dashboard.html';
+        const target = next.startsWith('http') ? next : `${baseUrl}/${next}`;
+        window.location.href = target;
+        return;
+      }
+
+      if (response.status === 401) {
+        showMessage(messageEl, data.message || 'Incorrect password', 'error');
+        return;
+      }
+
+      if (response.status !== 404) {
+        showMessage(messageEl, data.message || 'Login failed', 'error');
+        return;
+      }
+      // If 404, try next role.
+    }
+
+    showMessage(messageEl, 'Email not registered for any role', 'error');
+  } catch (error) {
+    showMessage(messageEl, error.message || 'Something went wrong', 'error');
+  }
+}
+
+async function registerAdminFromLogin(event) {
+  event.preventDefault();
+  const form = event.target;
+  const messageEl = document.getElementById('adminRegisterMessage');
+  const payload = Object.fromEntries(new FormData(form).entries());
+  const baseUrl = getBaseUrl();
+
+  try {
+    const response = await fetch(`${baseUrl}/api/admin/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
 
     const data = await parseJsonSafe(response);
-
-    if (data.token) {
-      localStorage.setItem('studentToken', data.token);
-    }
-
-    showMessage(messageEl, data.message || 'Login successful', 'success');
+    showMessage(messageEl, data.message || 'Admin registered', 'success');
     form.reset();
-
-    const params = new URLSearchParams(window.location.search);
-    const next = params.get('next') || 'jobs.html';
-    window.location.href = next;
   } catch (error) {
-    showMessage(messageEl, error.message || 'Something went wrong', 'error');
+    showMessage(messageEl, error.message || 'Registration failed', 'error');
+  }
+}
+
+function loadStudentDashboard(student) {
+  const welcomeEl = document.getElementById('studentWelcome');
+  const weatherMessage = document.getElementById('studentWeatherMessage');
+  const weatherDetails = document.getElementById('studentWeatherDetails');
+
+  if (welcomeEl) {
+    showMessage(welcomeEl, `Welcome, ${student.name || student.email}`, 'success');
+  }
+
+  if (typeof window.loadWeather === 'function') {
+    const userKey = student._id || student.id || student.email;
+    window.loadWeather(weatherMessage, weatherDetails, userKey);
   }
 }
 
@@ -267,7 +396,7 @@ async function applyToJob(jobId, buttonElement) {
   const token = getStudentToken();
   if (!token) {
     alert('Please login first to apply.');
-    window.location.href = 'login.html?reason=auth&next=jobs.html';
+    window.location.href = `${getBaseUrl()}/login.html?reason=auth&next=jobs.html`;
     return;
   }
 
@@ -278,7 +407,7 @@ async function applyToJob(jobId, buttonElement) {
   }
 
   try {
-    const response = await fetch('/api/jobs/apply', {
+    const response = await fetch(`${getBaseUrl()}/api/jobs/apply`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -302,7 +431,7 @@ async function applyToJob(jobId, buttonElement) {
     if (isAuthErrorStatus(error.status)) {
       clearStudentToken();
       alert('Session expired. Please login again.');
-      window.location.href = 'login.html?reason=auth&next=jobs.html';
+      window.location.href = `${getBaseUrl()}/login.html?reason=auth&next=jobs.html`;
       return;
     }
 
@@ -327,7 +456,8 @@ async function fetchJobs() {
     if (campus) params.set('campus', campus);
 
     const query = params.toString();
-    const response = await fetch(query ? `/api/jobs?${query}` : '/api/jobs');
+    const baseUrl = getBaseUrl();
+    const response = await fetch(query ? `${baseUrl}/api/jobs?${query}` : `${baseUrl}/api/jobs`);
     const data = await parseJsonSafe(response);
 
     const jobs = Array.isArray(data.jobs) ? data.jobs : [];
@@ -357,7 +487,7 @@ async function fetchSuggestions() {
   sectionEl.classList.remove('hidden');
 
   try {
-    const response = await fetch('/api/jobs/suggestions', {
+    const response = await fetch(`${getBaseUrl()}/api/jobs/suggestions`, {
       headers: {
         ...getAuthHeaders()
       }
@@ -392,7 +522,7 @@ async function fetchMyApplications() {
   if (!listEl || !messageEl) return;
 
   try {
-    const response = await fetch('/api/jobs/my-applications', {
+    const response = await fetch(`${getBaseUrl()}/api/jobs/my-applications`, {
       headers: {
         ...getAuthHeaders()
       }
@@ -424,6 +554,18 @@ async function fetchMyApplications() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const passwordToggles = document.querySelectorAll('.password-toggle');
+  passwordToggles.forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      const targetId = toggle.getAttribute('data-target');
+      const input = targetId ? document.getElementById(targetId) : null;
+      if (!input) return;
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+      toggle.textContent = isPassword ? 'Hide' : 'Show';
+    });
+  });
+
   maybeShowLoginReason();
 
   const student = await fetchCurrentStudent();
@@ -438,6 +580,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const loginForm = document.getElementById('loginForm');
   if (loginForm) loginForm.addEventListener('submit', loginStudent);
 
+  const adminRegisterForm = document.getElementById('adminRegisterForm');
+  if (adminRegisterForm) adminRegisterForm.addEventListener('submit', registerAdminFromLogin);
+
   if (document.getElementById('jobsList')) {
     const applyFiltersBtn = document.getElementById('applyFiltersBtn');
     if (applyFiltersBtn) {
@@ -450,5 +595,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (document.getElementById('applicationsList')) {
     fetchMyApplications();
+  }
+
+  if (document.getElementById('studentWelcome') && student) {
+    loadStudentDashboard(student);
   }
 });

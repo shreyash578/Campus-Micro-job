@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Campus Micro Placement</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="page-admin">
+  <div class="container">
+    <header class="top-bar admin-topbar">
+      <div class="admin-brand">
+        <span class="admin-pill">Admin Console</span>
+        <div>
+          <h1>Campus Micro Placement</h1>
+          <p class="muted">Monitor platform health and activity.</p>
+        </div>
+      </div>
+      <nav class="admin-nav">
+        <a href="index.html">Home</a>
+        <a href="login.html?role=admin">Admin Login</a>
+        <a href="jobs.html">Jobs</a>
+        <a href="my-applications.html">Applications</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="card admin-hero">
+        <div>
+          <h2>Admin Dashboard</h2>
+          <p id="adminWelcome" class="message"></p>
+        </div>
+        <button id="adminLogoutBtn" type="button" class="btn-outline">Logout</button>
+      </section>
+
+      <section class="card admin-surface">
+        <div class="admin-surface-header">
+          <h2>Platform Stats</h2>
+          <p id="adminStatsMessage" class="message"></p>
+        </div>
+        <section id="adminStatsGrid" class="stats-grid"></section>
+      </section>
+
+      <section class="card admin-surface">
+        <div class="admin-surface-header">
+          <h2>Weather Near You</h2>
+          <p id="adminWeatherMessage" class="message"></p>
+        </div>
+        <section id="adminWeatherDetails" class="stats-grid"></section>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/weather.js" defer></script>
+  <script src="js/admin.js" defer></script>
+</body>
+</html>

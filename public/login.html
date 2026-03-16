@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Student Login - Campus Micro Placement</title>
+  <title>Login - Campus Micro Placement</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body class="page-login">
@@ -16,19 +16,53 @@
     </header>
 
     <main class="card form-card">
-      <h1>Student Login</h1>
+      <h1>Login</h1>
+      <p class="message">Choose your role or leave it on Auto.</p>
 
       <form id="loginForm">
+        <label for="loginRole">Login As</label>
+        <select id="loginRole" name="role">
+          <option value="auto">Auto-detect</option>
+          <option value="student">Student</option>
+          <option value="admin">Admin</option>
+          <option value="company">Company</option>
+        </select>
+
         <label for="loginEmail">Email</label>
         <input type="email" id="loginEmail" name="email" required />
 
         <label for="loginPassword">Password</label>
-        <input type="password" id="loginPassword" name="password" required />
+        <div class="password-field">
+          <input type="password" id="loginPassword" name="password" required />
+          <button type="button" class="password-toggle" data-target="loginPassword">Show</button>
+        </div>
 
         <button type="submit">Login</button>
       </form>
 
       <p id="loginMessage" class="message"></p>
+
+      <section class="card" style="margin-top: 16px;">
+        <h2>Admin Registration</h2>
+        <p class="message">Only use this if you need to create an admin account.</p>
+        <form id="adminRegisterForm">
+          <label for="adminName">Full Name</label>
+          <input type="text" id="adminName" name="name" required />
+
+          <label for="adminEmail">Email</label>
+          <input type="email" id="adminEmail" name="email" required />
+
+          <label for="adminPassword">Password</label>
+          <div class="password-field">
+            <input type="password" id="adminPassword" name="password" required />
+            <button type="button" class="password-toggle" data-target="adminPassword">Show</button>
+          </div>
+
+          <button type="submit">Register Admin</button>
+        </form>
+
+        <p id="adminRegisterMessage" class="message"></p>
+      </section>
     </main>
   </div>
 
